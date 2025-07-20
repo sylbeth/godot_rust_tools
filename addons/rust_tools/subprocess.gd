@@ -116,6 +116,9 @@ func _notification(what: int) -> void:
 		# one that'll clean up (wait on) the helper threads.
 		pass
 
+## Constructs the shell command [code]Dictionary[/code] with changing directory,
+## accounting for the OS. If it couldn't be constructed, returns an empty
+## [code]Dictionary[/code].
 func _shell_command_with_chdir() -> Dictionary:
 	# Spawn a shell to change directory first, because Godot's process API does not support that.
 	# Using cargo's `--manifest-path` makes it ignore `.cargo/config.toml`, so that's not an option.
