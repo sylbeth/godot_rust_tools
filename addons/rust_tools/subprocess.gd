@@ -121,29 +121,49 @@ func _shell_command_with_chdir() -> Dictionary:
 	# Using cargo's `--manifest-path` makes it ignore `.cargo/config.toml`, so that's not an option.
 	# There is `cargo -C DIR build` but it's nightly only (as of 1.87.0), so that's not an option
 	# either.
-	match OS.get_name():
-		"Web":
-			# No process spawning, no Rust toolchain. Can't be done.
-			push_error("Rust Tools is not supported on the web")
+	
+	var os := OS.get_name()
+	if os in ["Web", "iOS"]:
+		# No process spawning, no Rust toolchain. Can't be done.
+		push_error("Rust tools is not supported on %s, since no commands can be launched from the Godot Editor. Contact the developer if you think there is a way." % os)
+		return {}
+	
+	if os == "Windows":
+		# In CMD, we need to enclose the _working_dir in double quotes, and thus,
+		# need to check if there are unescaped double quotes (an odd number of
+		# consecutive quotes). We do so by pattern matching, checking a group of
+		# even quotes followed by another quote and no other quotes before or after.
+		var pattern := RegEx.create_from_string("(?<!\")(?:\"\")*\"(?!\")")
+		if pattern.search(_working_dir) != null:
+			push_error("Path %s contains an unescaped double quote, which is not supported" % _working_dir)
 			return {}
-		"Windows":
-			# I'm not sure about the cmd.exe incantation. It's probably similar. PRs welcome.
-			push_error("Rust Tools is not supported on Windows yet")
-			return {}
-		_:
-			# All other platforms are Unix-like enough to have an sh-compatible shell.
-			# From the manual: "Enclosing characters in single quotes preserves the literal
-			# value of each character within the quotes. A single quote may not occur between
-			# single quotes, even when preceded by a backslash."
-			# This case is rare enough that we don't need to support it, but we can detect it.
-			if "'" in _working_dir:
-				push_error("Path %s contains a single quote, which is not supported" % [_working_dir])
-				return {}
-			var shell_command := (
+		
+		# Similar to Unix, but using cmd.exe and /c, and requiring double quotes instead.
+		return {
+			"path": "cmd.exe",
+			"arguments": ["/c", (
+				"cd \"%s\" && %s %s" %
+				[_working_dir, _command, ' '.join(_args)]
+			)],
+		}
+	
+	# From the manual: "Enclosing characters in single quotes preserves the literal
+	# value of each character within the quotes. A single quote may not occur between
+	# single quotes, even when preceded by a backslash."
+	# This case is rare enough that we don't need to support it, but we can detect it.
+	if "'" in _working_dir:
+		push_error("Path %s contains a single quote, which is not supported" % _working_dir)
+		return {}
+	
+	# All other platforms are Unix-like enough to have an sh-compatible shell.
+	# We send a warning to those Operating Systems for which support is experimental.
+	if os in ["Android", "macOS"]:
+		push_warning("Support for %s is still experimental. Contact the developer in case of both success and failure." % os)
+	
+	return {
+		"path": "/bin/sh",
+		"arguments": ["-c", (
 				"cd '%s' && %s %s" %
 				[_working_dir, _command, ' '.join(_args)]
-			)
-			return {
-				"path": "/bin/sh",
-				"arguments": ["-c", shell_command],
-			}
+			)],
+	}
