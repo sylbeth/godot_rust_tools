@@ -35,6 +35,8 @@ func set_working_dir(working_dir: String) -> void:
 ## Returns [code]true[/code] if successful.
 func run_sync() -> bool:
 	var command_line := _shell_command_with_chdir()
+	if command_line.is_empty():
+		return false
 	var output := []
 	var read_stderr := true
 	var open_console := false
@@ -49,6 +51,8 @@ func run_sync() -> bool:
 ## Returns [code]true[/code] if started successfully.
 func run_async() -> bool:
 	var command_line := _shell_command_with_chdir()
+	if command_line.is_empty():
+		return false
 	var blocking := true
 	var dict := OS.execute_with_pipe(command_line.path, command_line.arguments, blocking)
 	if dict.is_empty():
