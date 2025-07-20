@@ -86,7 +86,7 @@ func _poll_process(pid: int) -> void:
 	var exit_code := OS.get_process_exit_code(pid)
 	var success := exit_code == 0
 	# Use call_deferred to make sure that signal handlers run on the main thread.
-	call_deferred("_process_finished", success)
+	_process_finished.call_deferred(success)
 
 ## Called on the main thread once the process is finished.
 func _process_finished(success: bool) -> void:
